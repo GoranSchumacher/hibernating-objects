@@ -1,0 +1,4 @@
+How to run akka actors in Intelij and Scala Worksheet
+======================================================
+https://youtrack.jetbrains.com/issue/SCL-9229
+A work around is unticking "Run worksheet in the compiler process" under "Preferences > Languages & Frameworks > Scala > Worksheet"
