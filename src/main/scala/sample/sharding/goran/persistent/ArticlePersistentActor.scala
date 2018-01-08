@@ -147,42 +147,54 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
   // If your method has side-effects => Make shure these are not performed during recover using;
   // the method: recoveryRunning
   def localReceiveCommand1: Receive = {
-    case cOrder@AddCustomerOrder(o) if (!recoveryRunning) =>
-      persist(cOrder) { order =>
+    case cOrder@ AddCustomerOrder(o)  =>
+      if (!recoveryRunning) {
+        persist(cOrder) { order =>
+          state = state.addOrderToCustomerOrders(o)
+        }
+      } else
         state = state.addOrderToCustomerOrders(o)
-      }
 
-    case cOrder@AddCustomerOrderFinal(o) =>
+    case cOrder@ AddCustomerOrderFinal(o) =>
       if (!recoveryRunning) {
         persist(cOrder) { order =>
           state = state.removeIdFromCustomerOrders(o.id).addToStock(-o.amount)
         }
-      }
-    case cOrder@RemoveCustomerOrder(o) =>
+      } else
+        state = state.removeIdFromCustomerOrders(o.id).addToStock(-o.amount)
+
+    case cOrder@ RemoveCustomerOrder(o) =>
       if (!recoveryRunning) {
         persist(cOrder) { order =>
           state = state.removeIdFromCustomerOrders(o.id)
         }
-      }
+      } else
+        state = state.removeIdFromCustomerOrders(o.id)
 
-    case cOrder@AddPurchaseOrder(o) =>
+    case cOrder@ AddPurchaseOrder(o) =>
       if (!recoveryRunning) {
         persist(cOrder) { order =>
           state = state.addOrderToPurchaseOrders(o)
         }
-      }
-    case cOrder@AddPurchaseOrderFinal(o) =>
+      } else
+        state = state.addOrderToPurchaseOrders(o)
+
+    case cOrder@ AddPurchaseOrderFinal(o) =>
       if (!recoveryRunning) {
         persist(cOrder) { order =>
           state = state.removeIdFromPurchaseOrders(o.id).addToStock(o.amount)
         }
-      }
-    case cOrder@RemovePurchaseOrder(o) =>
+      } else
+        state = state.removeIdFromPurchaseOrders(o.id).addToStock(o.amount)
+
+    case cOrder@ RemovePurchaseOrder(o) =>
       if (!recoveryRunning) {
         persist(cOrder) { order =>
           state = state.removeIdFromPurchaseOrders(o.id)
         }
-      }
+      } else
+        state = state.removeIdFromPurchaseOrders(o.id)
+
     case GetStockPlan => {
       sender() ! state.stockPerDate
     }
