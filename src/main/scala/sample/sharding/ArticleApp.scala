@@ -1,8 +1,12 @@
 package sample.sharding
 
 import akka.actor.{ActorSystem, Props}
+import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+import sample.sharding.goran.persistent.ArticlePersistentActor._
 import sample.sharding.goran.persistent.{Articles, Examples}
+
+import scala.util.{Failure, Success}
 
 /**
   * @author Gøran Schumacher (GS) / Schumacher Consulting Aps
@@ -29,7 +33,7 @@ object ArticleApp {
       val system = ActorSystem("ShardingSystem", config)
       // Create an actor that starts the sharding and sends random messages
       //system.actorOf(Props[Devices])
-      system.actorOf(Props[Articles], "articlesRouter")
+      val articlesRouter = system.actorOf(Props[Articles], "articlesRouter")
+      }
     }
-  }
 }

@@ -44,7 +44,7 @@ object TestApp {
           result = res1+res2+res3+res4
         } yield result
 
-      println(s"Total Result is: ${Await.result(res, atMost = 5 seconds)}")
+      println(s"Total Result is: ${Await.result(res, atMost = 25 seconds)}")
 
     }
 }

@@ -64,25 +64,26 @@ class Articles extends Actor with ActorLogging{
 
   def receive = {
     case Increment => {
-      val message = random.nextInt(2) match {
-        case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-        case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-      }
-      deviceRegion ! MessageWrapper(randomArticle, message)
-
-      import akka.pattern.ask
-      implicit val timeout = akka.util.Timeout(30 seconds)
-      (deviceRegion ask MessageWrapper(randomArticle, GetStockPlan)).onComplete{
-        //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
-        case Success(result) => log.debug(s"GetStockPlan: $result")
-        case Failure(t) => log.debug(s"$t")
-      }
+//      val message = random.nextInt(2) match {
+//        case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+//        case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+//      }
+//      deviceRegion ! MessageWrapper(randomArticle, message)
+//
+//      import akka.pattern.ask
+//      implicit val timeout = akka.util.Timeout(30 seconds)
+//      (deviceRegion ask MessageWrapper(randomArticle, GetStockPlan)).onComplete{
+//        //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
+//        case Success(result) => log.debug(s"GetStockPlan: $result")
+//        case Failure(t) => log.debug(s"$t")
+//      }
     }
 
     case sub@ Subscribe(_, to, _) => {
       log.debug(s"Subscribe received from ${sender()} Message: $sub")
       deviceRegion ! sub
     }
+    case mess@ MessageWrapper(_, _) => deviceRegion forward mess
     case mess@ _ => log.debug(s"UNKNOWN MESSAGE: $mess")
   }
 }

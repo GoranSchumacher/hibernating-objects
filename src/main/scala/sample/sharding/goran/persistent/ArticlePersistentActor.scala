@@ -183,7 +183,9 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
           state = state.removeIdFromPurchaseOrders(o.id)
         }
       }
-    case GetStockPlan => sender() ! state.stockPerDate
+    case GetStockPlan => {
+      sender() ! state.stockPerDate
+    }
 
     case SubscriptionEventOccurred(_, subscription, mess) => log.debug(s"SubscriptionEventOccurred: $subscription $mess")
   }
