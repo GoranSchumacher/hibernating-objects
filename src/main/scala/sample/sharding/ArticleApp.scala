@@ -1,12 +1,8 @@
 package sample.sharding
 
 import akka.actor.{ActorSystem, Props}
-import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import sample.sharding.goran.persistent.ArticlePersistentActor._
 import sample.sharding.goran.persistent.{Articles, Examples}
-
-import scala.util.{Failure, Success}
 
 /**
   * @author Gøran Schumacher (GS) / Schumacher Consulting Aps

@@ -43,7 +43,6 @@ object ArticlePersistentActor {
 
   trait StockChange {
     def id: String
-
     def amountChange: Int
   }
 
@@ -51,13 +50,11 @@ object ArticlePersistentActor {
 
   case class CustomerOrder(id: String, deliveryDate: JustDate, amount: Int) extends SortedAndStockChange {
     def sortField = deliveryDate.toString
-
     def amountChange = -amount
   }
 
   case class PurchaseOrder(id: String, deliveryDate: JustDate, amount: Int) extends SortedAndStockChange {
     def sortField = deliveryDate.toString
-
     def amountChange = amount
   }
 
@@ -101,6 +98,31 @@ object ArticlePersistentActor {
     def addToStock(amount: Int) = {
       this.copy(inStock = inStock + amount)
     }
+
+    def handleWrapper(wrapper: MessageWrapper):OrderState = {
+      wrapper.message match {
+        case cOrder@ AddCustomerOrder(o) =>
+          addOrderToCustomerOrders(o)
+
+        case cOrder@ AddCustomerOrderFinal(o) =>
+          removeIdFromCustomerOrders(o.id)
+          addToStock(-o.amount)
+
+        case cOrder@ RemoveCustomerOrder(o) =>
+          removeIdFromCustomerOrders(o.id)
+
+
+        case cOrder@ AddPurchaseOrder(o) =>
+          addOrderToPurchaseOrders(o)
+
+        case cOrder@ AddPurchaseOrderFinal(o) =>
+          removeIdFromPurchaseOrders(o.id).addToStock(o.amount)
+
+        case cOrder@ RemovePurchaseOrder(o) =>
+          removeIdFromPurchaseOrders(o.id)
+      }
+
+    }
   }
 
   // Messages
@@ -129,7 +151,6 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
   // Abstract members from LeanPersistAndHibernateTrait
   override val hibernatingTimeout = 1 minute // 1 minute == Default value
   var state = OrderState(0, List.empty, List.empty)
-
   override def persistenceId = context.self.path.name // == Default value
 
   def receiveRecover: Receive = receiveRecoverLocal orElse receiveCommandLocal
@@ -147,58 +168,22 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
   // If your method has side-effects => Make shure these are not performed during recover using;
   // the method: recoveryRunning
   def localReceiveCommand1: Receive = {
-    case cOrder@ AddCustomerOrder(o)  =>
+
+    case wrapper@ MessageWrapper(id, mess@ GetStockPlan)=>
+      sender() ! s"Article: $persistenceId, "+state.stockPerDate
+
+    case wrapper: MessageWrapper => {
       if (!recoveryRunning) {
-        persist(cOrder) { order =>
-          state = state.addOrderToCustomerOrders(o)
+        persist(wrapper) {a=>
+          state = state.handleWrapper(wrapper)
         }
       } else
-        state = state.addOrderToCustomerOrders(o)
-
-    case cOrder@ AddCustomerOrderFinal(o) =>
-      if (!recoveryRunning) {
-        persist(cOrder) { order =>
-          state = state.removeIdFromCustomerOrders(o.id).addToStock(-o.amount)
-        }
-      } else
-        state = state.removeIdFromCustomerOrders(o.id).addToStock(-o.amount)
-
-    case cOrder@ RemoveCustomerOrder(o) =>
-      if (!recoveryRunning) {
-        persist(cOrder) { order =>
-          state = state.removeIdFromCustomerOrders(o.id)
-        }
-      } else
-        state = state.removeIdFromCustomerOrders(o.id)
-
-    case cOrder@ AddPurchaseOrder(o) =>
-      if (!recoveryRunning) {
-        persist(cOrder) { order =>
-          state = state.addOrderToPurchaseOrders(o)
-        }
-      } else
-        state = state.addOrderToPurchaseOrders(o)
-
-    case cOrder@ AddPurchaseOrderFinal(o) =>
-      if (!recoveryRunning) {
-        persist(cOrder) { order =>
-          state = state.removeIdFromPurchaseOrders(o.id).addToStock(o.amount)
-        }
-      } else
-        state = state.removeIdFromPurchaseOrders(o.id).addToStock(o.amount)
-
-    case cOrder@ RemovePurchaseOrder(o) =>
-      if (!recoveryRunning) {
-        persist(cOrder) { order =>
-          state = state.removeIdFromPurchaseOrders(o.id)
-        }
-      } else
-        state = state.removeIdFromPurchaseOrders(o.id)
-
-    case GetStockPlan => {
-      sender() ! state.stockPerDate
+        state = state.handleWrapper(wrapper)
     }
 
     case SubscriptionEventOccurred(_, subscription, mess) => log.debug(s"SubscriptionEventOccurred: $subscription $mess")
+
+    case mess@ _ => log.debug(s"UNKNOWN MESSAGE: $mess")
+
   }
 }

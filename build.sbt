@@ -22,6 +22,7 @@ lazy val `akka-sample-sharding-scala` = project
 
       // ADDED By Göran
       "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
+      "com.github.romix.akka" %% "akka-kryo-serialization" % "0.5.2",
       "com.github.scullxbones" %% "akka-persistence-mongo-rxmongo" % "2.0.4",
       "org.reactivemongo" %% "reactivemongo-akkastream" % "0.12.7",
       "org.reactivemongo" %% "reactivemongo" % "0.12.6", // 0.12.7 does not create database or collections

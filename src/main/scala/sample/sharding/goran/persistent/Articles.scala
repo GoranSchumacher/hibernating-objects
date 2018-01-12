@@ -22,7 +22,9 @@ object Articles {
 }
 class Articles extends Actor with ActorLogging{
   private val extractEntityId: ShardRegion.ExtractEntityId = {
-    case MessageWrapper(name, msg) => (name, msg)
+    //case MessageWrapper(name, msg) => (name, msg)
+    // Sending the complete wrapper
+    case wrapper@ MessageWrapper(name, msg) => (name, wrapper)
   }
 
   private val numberOfShards = 100
@@ -46,8 +48,10 @@ class Articles extends Actor with ActorLogging{
   implicit val ec: ExecutionContext = context.dispatcher
   context.system.scheduler.schedule(10.seconds, 1 second, self, Increment)
 
-  val randomArticles = "123 456 789 987 654 321".split(" ").toList
-  def randomArticle = randomArticles(random.nextInt(randomArticles.size))
+//  val randomArticles = "123 456 789 987 654 321".split(" ").toList
+//  def randomArticle = randomArticles(random.nextInt(randomArticles.size))
+  val randomArticles = 1 to 1000
+  def randomArticle = randomArticles(random.nextInt(randomArticles.size)).toString
 
   val randomYears = "17 18 19 20 21 22".split(" ").toList
   def randomYear = randomYears(random.nextInt(randomYears.size))
@@ -64,19 +68,21 @@ class Articles extends Actor with ActorLogging{
 
   def receive = {
     case Increment => {
-//      val message = random.nextInt(2) match {
-//        case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-//        case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-//      }
-//      deviceRegion ! MessageWrapper(randomArticle, message)
-//
-//      import akka.pattern.ask
-//      implicit val timeout = akka.util.Timeout(30 seconds)
-//      (deviceRegion ask MessageWrapper(randomArticle, GetStockPlan)).onComplete{
-//        //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
-//        case Success(result) => log.debug(s"GetStockPlan: $result")
-//        case Failure(t) => log.debug(s"$t")
-//      }
+      val message = random.nextInt(4) match {
+        case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+        case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+        case 2 => AddCustomerOrderFinal(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+        case 3 => AddPurchaseOrderFinal(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+      }
+      deviceRegion ! MessageWrapper(randomArticle, message)
+
+      import akka.pattern.ask
+      implicit val timeout = akka.util.Timeout(30 seconds)
+      (deviceRegion ask MessageWrapper(randomArticle, GetStockPlan)).onComplete{
+        //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
+        case Success(result) => log.debug(s"GetStockPlan: $result")
+        case Failure(t) => log.debug(s"$t")
+      }
     }
 
     case sub@ Subscribe(_, to, _) => {
