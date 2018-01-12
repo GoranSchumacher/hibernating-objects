@@ -56,8 +56,9 @@ class ExamplePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
     }
   }
 
-  override def receiveCommandLocal: Receive = pubSubReceiveCommand orElse localReceiveCommand1
-  def localReceiveCommand1: Receive = {
+  override def receiveCommand: Receive = pubSubReceiveCommand orElse examplePersistentReceiveCommand
+
+  def examplePersistentReceiveCommand: Receive = {
     case increment@ Increment(deviceId, word1, word2) =>
       persist(Evt(s"${word1}-${state.size}")) { event =>
         val child = context.child(word1).getOrElse(context.actorOf(Props[ExampleChildPersistentActor], word1))

@@ -153,7 +153,10 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
   var state = OrderState(0, List.empty, List.empty)
   override def persistenceId = context.self.path.name // == Default value
 
-  def receiveRecover: Receive = receiveRecoverLocal orElse receiveCommandLocal
+  // Remember to call this, iff you want to hibernate
+  context.setReceiveTimeout(hibernatingTimeout)
+
+  def receiveRecover: Receive = receiveRecoverLocal orElse articleReceiveCommand
 
   val receiveRecoverLocal: Receive = {
     case SnapshotOffer(_, snapshot: OrderState) => {
@@ -162,12 +165,13 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
     }
   }
 
-  override def receiveCommandLocal: Receive = pubSubReceiveCommand orElse localReceiveCommand1
+  //override def receiveCommandLocal: Receive = pubSubReceiveCommand orElse localReceiveCommand1
+  override def receiveCommand = super.receiveCommand orElse articleReceiveCommand
 
   // Be aware that recover operations also is performed here
   // If your method has side-effects => Make shure these are not performed during recover using;
   // the method: recoveryRunning
-  def localReceiveCommand1: Receive = {
+  def articleReceiveCommand: Receive = {
 
     case wrapper@ MessageWrapper(id, mess@ GetStockPlan)=>
       sender() ! s"Article: $persistenceId, "+state.stockPerDate

@@ -5,7 +5,8 @@ import akka.persistence._
 import sample.sharding.goran.persistent.ExamplePersistentActor.{Evt, ExampleState, Increment}
 import sample.sharding.goran.persistent.childutils.PubSubPersistentActor
 import sample.sharding.goran.persistent.childutils.PubSubPersistentActor.{Subscribe, Unsubscribe}
-import sample.sharding.goran.persistent.traits.LeanPersistAndHibernateTrait
+import sample.sharding.goran.persistent.traits.{LeanPersistAndHibernateTrait, PubSubTrait}
+
 import scala.concurrent.duration._
 
 /**
@@ -15,7 +16,7 @@ import scala.concurrent.duration._
   * @version $Revision$ 11/11/2017
   */
 
-class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHibernateTrait {
+class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHibernateTrait with PubSubTrait {
 
   // Abstract members from LeanPersistAndHibernateTrait
   //setTimeout(1 minute)
@@ -43,9 +44,9 @@ class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHib
     }
   }
 
-  override def receiveCommandLocal: Receive = pubSubReceiveCommand andThen localReceiveCommand1
+  override def receiveCommand = pubSubReceiveCommand orElse exampleChildReceiveCommand
 
-  def localReceiveCommand1: Receive = {
+  def exampleChildReceiveCommand: Receive = {
     case data: String =>
       persist(Evt(s"${data}-${numEvents}")) { event =>
         updateState(event)
@@ -54,11 +55,11 @@ class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHib
     case "print" => println(state)
   }
 
-  ///////// PubSub ////////////
-  lazy val pubSubChild = context.child("PubSubChildActor").getOrElse(context.actorOf(Props[PubSubPersistentActor], "PubSubChildActor"))
-  def pubSubReceiveCommand: Receive = {
-    case s: Subscribe => pubSubChild forward s
-    case s: Unsubscribe => pubSubChild forward s
-  }
+//  ///////// PubSub ////////////
+//  lazy val pubSubChild = context.child("PubSubChildActor").getOrElse(context.actorOf(Props[PubSubPersistentActor], "PubSubChildActor"))
+//  def pubSubReceiveCommand: Receive = {
+//    case s: Subscribe => pubSubChild forward s
+//    case s: Unsubscribe => pubSubChild forward s
+//  }
 
 }

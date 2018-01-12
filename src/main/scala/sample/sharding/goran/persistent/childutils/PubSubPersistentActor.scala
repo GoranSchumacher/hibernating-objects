@@ -1,7 +1,7 @@
 package sample.sharding.goran.persistent.childutils
 
 import akka.actor.{ActorLogging, ActorRef, Props}
-import akka.persistence.{PersistentActor, SnapshotOffer}
+import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import sample.sharding.goran.persistent.childutils.PubSubPersistentActor._
 import sample.sharding.goran.persistent.traits.LeanPersistAndHibernateTrait
 
@@ -26,7 +26,7 @@ object PubSubPersistentActor {
   case class  EntityRef(routerRef: ActorRef, entityName: String)
 }
 
-class PubSubPersistentActor extends PersistentActor with LeanPersistAndHibernateTrait with ActorLogging{
+abstract class PubSubPersistentActor extends PersistentActor with LeanPersistAndHibernateTrait with ActorLogging{
 
   type StateType = Map[EntityRef, Set[String]]
   case class State(subscribers: StateType= Map[EntityRef, Set[String]]())
@@ -36,7 +36,7 @@ class PubSubPersistentActor extends PersistentActor with LeanPersistAndHibernate
   // Abstract members from LeanPersistAndHibernateTrait
   override def persistenceId = "PubSubChildActor"
 
-  def receiveRecover: Receive = receiveRecoverLocal orElse receiveCommandLocal
+  def receiveRecover: Receive = receiveRecoverLocal orElse pubSubPersistentreceiveCommand
 
   def receiveRecoverLocal: Receive = {
     case SnapshotOffer(_, snapshot: State) => {
@@ -45,7 +45,7 @@ class PubSubPersistentActor extends PersistentActor with LeanPersistAndHibernate
     }
   }
 
-  override def receiveCommandLocal: Receive = {
+  def pubSubPersistentreceiveCommand: Receive = {
     // Be aware that recover operations also is performed here
     // If your method has side-effects => Make shure these are not performed during recover using;
     // the method: recoveryRunning
