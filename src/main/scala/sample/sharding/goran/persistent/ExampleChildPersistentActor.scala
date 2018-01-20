@@ -18,6 +18,10 @@ import scala.concurrent.duration._
 
 class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHibernateTrait with PubSubTrait {
 
+  // Abstract members from PubSubTrait
+  def fromRouter = null
+  def fromName =  context.self.path.name
+
   // Abstract members from LeanPersistAndHibernateTrait
   //setTimeout(1 minute)
   var state = ExampleState()

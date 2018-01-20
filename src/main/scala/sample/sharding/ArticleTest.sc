@@ -12,14 +12,14 @@ import akka.pattern.ask
 import scala.concurrent.duration._
 implicit val timeout = Timeout(5 seconds)
 
-articlesRouter ! MessageWrapper("1", AddPurchaseOrder(PurchaseOrder("1", new JustDate(2018, 1, 20), 100)))
-articlesRouter ! MessageWrapper("1", AddCustomerOrder(CustomerOrder("1", new JustDate(2018, 1, 25), 5)))
-articlesRouter ! MessageWrapper("1", AddPurchaseOrder(PurchaseOrder("1", new JustDate(2018, 2, 1), 15)))
-articlesRouter ! MessageWrapper("1", AddPurchaseOrder(PurchaseOrder("1", new JustDate(2018, 2, 20), 25)))
-articlesRouter ! MessageWrapper("1", AddCustomerOrder(CustomerOrder("1", new JustDate(2018, 2, 25), 8)))
+articlesRouter ! EntityWrapper("1", AddPurchaseOrder(PurchaseOrder("1", new JustDate(2018, 1, 20), 100)))
+articlesRouter ! EntityWrapper("1", AddCustomerOrder(CustomerOrder("1", new JustDate(2018, 1, 25), 5)))
+articlesRouter ! EntityWrapper("1", AddPurchaseOrder(PurchaseOrder("1", new JustDate(2018, 2, 1), 15)))
+articlesRouter ! EntityWrapper("1", AddPurchaseOrder(PurchaseOrder("1", new JustDate(2018, 2, 20), 25)))
+articlesRouter ! EntityWrapper("1", AddCustomerOrder(CustomerOrder("1", new JustDate(2018, 2, 25), 8)))
 //(articlesRouter ask MessageWrapper("1", GetStockPlan)).map{a=>println("Result:" + a)}
 
-val future = (articlesRouter ask MessageWrapper("1", GetStockPlan))
+val future = (articlesRouter ask EntityWrapper("1", GetStockPlan))
   Thread.sleep(5000)
   future.onComplete{
   //case t: Try[Any] => log.debug(s"GetStockPlan: $t")

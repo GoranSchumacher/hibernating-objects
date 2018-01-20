@@ -99,26 +99,24 @@ object ArticlePersistentActor {
       this.copy(inStock = inStock + amount)
     }
 
-    def handleWrapper(wrapper: MessageWrapper):OrderState = {
+    def handleWrapper(wrapper: EntityWrapper):OrderState = {
       wrapper.message match {
-        case cOrder@ AddCustomerOrder(o) =>
+        case AddCustomerOrder(o) =>
           addOrderToCustomerOrders(o)
 
-        case cOrder@ AddCustomerOrderFinal(o) =>
+        case AddCustomerOrderFinal(o) =>
+          removeIdFromCustomerOrders(o.id).addToStock(-o.amount)
+
+        case RemoveCustomerOrder(o) =>
           removeIdFromCustomerOrders(o.id)
-          addToStock(-o.amount)
 
-        case cOrder@ RemoveCustomerOrder(o) =>
-          removeIdFromCustomerOrders(o.id)
-
-
-        case cOrder@ AddPurchaseOrder(o) =>
+        case AddPurchaseOrder(o) =>
           addOrderToPurchaseOrders(o)
 
-        case cOrder@ AddPurchaseOrderFinal(o) =>
+        case AddPurchaseOrderFinal(o) =>
           removeIdFromPurchaseOrders(o.id).addToStock(o.amount)
 
-        case cOrder@ RemovePurchaseOrder(o) =>
+        case RemovePurchaseOrder(o) =>
           removeIdFromPurchaseOrders(o.id)
       }
 
@@ -126,16 +124,32 @@ object ArticlePersistentActor {
   }
 
   // Messages
-  case class MessageWrapper(name: String, message: Any)
+  case class EntityWrapper(name: String, message: Any)
 
+  /**
+    * Planned Customer order
+    * @param order
+    */
   case class AddCustomerOrder(order: CustomerOrder)
 
   case class RemoveCustomerOrder(order: CustomerOrder)
 
+  /**
+    * Delivered customer order
+    * @param order
+    */
   case class AddCustomerOrderFinal(order: CustomerOrder)
 
+  /**
+    * Planned purchase order
+    * @param order
+    */
   case class AddPurchaseOrder(order: PurchaseOrder)
 
+  /**
+    * Delivered purchase order
+    * @param order
+    */
   case class AddPurchaseOrderFinal(order: PurchaseOrder)
 
   case class RemovePurchaseOrder(order: PurchaseOrder)
@@ -148,10 +162,16 @@ object ArticlePersistentActor {
 }
 
 class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with LeanPersistAndHibernateTrait with PubSubTrait with ActorLogging {
+
+  // Abstract members from PubSubTrait
+  def fromRouter = myRouter
+  def fromName =  context.self.path.name
+
   // Abstract members from LeanPersistAndHibernateTrait
   override val hibernatingTimeout = 1 minute // 1 minute == Default value
   var state = OrderState(0, List.empty, List.empty)
   override def persistenceId = context.self.path.name // == Default value
+  override def purgeLogs: Boolean = true // When making snapshot it will purge logs from older entries preserving only the most recent snapshot and logs
 
   // Remember to call this, iff you want to hibernate
   context.setReceiveTimeout(hibernatingTimeout)
@@ -160,12 +180,11 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
 
   val receiveRecoverLocal: Receive = {
     case SnapshotOffer(_, snapshot: OrderState) => {
-      println(s"Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
+      println(s"Recovery Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
       state = snapshot
     }
   }
 
-  //override def receiveCommandLocal: Receive = pubSubReceiveCommand orElse localReceiveCommand1
   override def receiveCommand = super.receiveCommand orElse articleReceiveCommand
 
   // Be aware that recover operations also is performed here
@@ -173,16 +192,18 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
   // the method: recoveryRunning
   def articleReceiveCommand: Receive = {
 
-    case wrapper@ MessageWrapper(id, mess@ GetStockPlan)=>
-      sender() ! s"Article: $persistenceId, "+state.stockPerDate
+    case wrapper@ EntityWrapper(id, mess@ GetStockPlan)=>
+      sender() ! s"Article: $persistenceId, ${state.stockPerDate}"
 
-    case wrapper: MessageWrapper => {
+    case wrapper: EntityWrapper => {
       if (!recoveryRunning) {
         persist(wrapper) {a=>
           state = state.handleWrapper(wrapper)
         }
-      } else
+      } else {
         state = state.handleWrapper(wrapper)
+        println(s"Recovery message received, persistenceId: ${persistenceId}, data: ${wrapper}")
+      }
     }
 
     case SubscriptionEventOccurred(_, subscription, mess) => log.debug(s"SubscriptionEventOccurred: $subscription $mess")

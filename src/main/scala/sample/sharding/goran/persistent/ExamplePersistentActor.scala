@@ -37,6 +37,10 @@ object ExamplePersistentActor {
 
 class ExamplePersistentActor(myRouter: ActorRef) extends PersistentActor with LeanPersistAndHibernateTrait with PubSubTrait with ActorLogging {
 
+  // Abstract members from PubSubTrait
+  def fromRouter = null
+  def fromName =  context.self.path.name
+
   // Abstract members from LeanPersistAndHibernateTrait
   override val hibernatingTimeout = 1 minute // 1 minute == Default value
   var state = ExampleState()
@@ -62,7 +66,8 @@ class ExamplePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
     case increment@ Increment(deviceId, word1, word2) =>
       persist(Evt(s"${word1}-${state.size}")) { event =>
         val child = context.child(word1).getOrElse(context.actorOf(Props[ExampleChildPersistentActor], word1))
-        pubSubChild ! NotifySubscribers(IncrementSubscription, increment)
+        //pubSubChild ! NotifySubscribers(IncrementSubscription, increment)
+        notifySubscribers(IncrementSubscription, increment)
         println(s"Number of children: ${context.children.toList.size}")
         child ! word2
         updateState(event)
@@ -80,7 +85,7 @@ class ExamplePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
     override def preStart(): Unit = {
       if (persistenceId == "2") {
         log.debug(s"START TRYING TO SEND Subscribe PersistenceID${persistenceId}")
-        subscribe(myRouter, persistenceId, myRouter, "1", IncrementSubscription)
+        subscribe(myRouter, "1", IncrementSubscription)
       }
       super.preStart()
     }

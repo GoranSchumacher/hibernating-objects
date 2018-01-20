@@ -21,17 +21,17 @@ object ArticleTestApp {
     import scala.concurrent.duration._
     implicit val timeout = Timeout(15 seconds)
 
-    val articleId = "2"
-    articlesRouter ! MessageWrapper(articleId, AddPurchaseOrder(PurchaseOrder("1001", new JustDate(2018, 1, 20), 100)))
-    articlesRouter ! MessageWrapper(articleId, AddCustomerOrder(CustomerOrder("2001", new JustDate(2018, 1, 25), 5)))
-    articlesRouter ! MessageWrapper(articleId, AddPurchaseOrder(PurchaseOrder("1002", new JustDate(2018, 2, 1), 15)))
-    articlesRouter ! MessageWrapper(articleId, AddPurchaseOrder(PurchaseOrder("1003", new JustDate(2018, 2, 20), 25)))
-    articlesRouter ! MessageWrapper(articleId, AddCustomerOrder(CustomerOrder("2002", new JustDate(2018, 2, 25), 8)))
-    (articlesRouter ? MessageWrapper(articleId, GetStockPlan)).map{a=>println("Result:1" + a)}
+    val articleId = "1"
+    articlesRouter ! EntityWrapper(articleId, AddPurchaseOrder(PurchaseOrder("1001", new JustDate(2018, 1, 20), 100)))
+    articlesRouter ! EntityWrapper(articleId, AddCustomerOrder(CustomerOrder("2001", new JustDate(2018, 1, 25), 5)))
+    articlesRouter ! EntityWrapper(articleId, AddPurchaseOrder(PurchaseOrder("1002", new JustDate(2018, 2, 1), 15)))
+    articlesRouter ! EntityWrapper(articleId, AddPurchaseOrder(PurchaseOrder("1003", new JustDate(2018, 2, 20), 25)))
+    articlesRouter ! EntityWrapper(articleId, AddCustomerOrder(CustomerOrder("2002", new JustDate(2018, 2, 25), 8)))
+    (articlesRouter ? EntityWrapper(articleId, GetStockPlan)).map{ a=>println("Result1: " + a)}
 
-    articlesRouter ! MessageWrapper(articleId, AddPurchaseOrderFinal(PurchaseOrder("1001", new JustDate(2018, 1, 20), 90)))
-    articlesRouter ! MessageWrapper(articleId, AddCustomerOrderFinal(CustomerOrder("2001", new JustDate(2018, 1, 25), 5)))
-    (articlesRouter ? MessageWrapper(articleId, GetStockPlan)).map{a=>println("Result:2" + a)}
+    articlesRouter ! EntityWrapper(articleId, AddPurchaseOrderFinal(PurchaseOrder("1001", new JustDate(2018, 1, 20), 90)))
+    articlesRouter ! EntityWrapper(articleId, AddCustomerOrderFinal(CustomerOrder("2001", new JustDate(2018, 1, 25), 5)))
+    (articlesRouter ? EntityWrapper(articleId, GetStockPlan)).map{ a=>println("Result2: " + a)}
 
   }
 }

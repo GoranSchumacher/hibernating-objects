@@ -24,13 +24,13 @@ class Articles extends Actor with ActorLogging{
   private val extractEntityId: ShardRegion.ExtractEntityId = {
     //case MessageWrapper(name, msg) => (name, msg)
     // Sending the complete wrapper
-    case wrapper@ MessageWrapper(name, msg) => (name, wrapper)
+    case wrapper@ EntityWrapper(name, msg) => (name, wrapper)
   }
 
   private val numberOfShards = 100
 
   private val extractShardId: ShardRegion.ExtractShardId = {
-    case MessageWrapper(name, msg) => (name.hashCode % numberOfShards).toString
+    case EntityWrapper(name, msg) => (name.hashCode % numberOfShards).toString
     // Needed if you want to use 'remember entities':
     //case ShardRegion.StartEntity(id) => (id.toLong % numberOfShards).toString
   }
@@ -46,11 +46,10 @@ class Articles extends Actor with ActorLogging{
   val numberOfDevices = 50
 
   implicit val ec: ExecutionContext = context.dispatcher
-  context.system.scheduler.schedule(10.seconds, 1 second, self, Increment)
+  context.system.scheduler.schedule(10.second, 10 milliseconds, self, Increment)
+  //context.system.scheduler.scheduleOnce(10.seconds, self, Increment)
 
-//  val randomArticles = "123 456 789 987 654 321".split(" ").toList
-//  def randomArticle = randomArticles(random.nextInt(randomArticles.size))
-  val randomArticles = 1 to 1000
+  val randomArticles = 1 to 1000000
   def randomArticle = randomArticles(random.nextInt(randomArticles.size)).toString
 
   val randomYears = "17 18 19 20 21 22".split(" ").toList
@@ -64,32 +63,40 @@ class Articles extends Actor with ActorLogging{
 
   def randomAmount = random.nextInt(19)+1
 
-  def randomID = random.nextInt(100)
+  def randomID = random.nextInt(1000000)
 
   def receive = {
     case Increment => {
-      val message = random.nextInt(4) match {
-        case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-        case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-        case 2 => AddCustomerOrderFinal(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-        case 3 => AddPurchaseOrderFinal(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-      }
-      deviceRegion ! MessageWrapper(randomArticle, message)
-
-      import akka.pattern.ask
-      implicit val timeout = akka.util.Timeout(30 seconds)
-      (deviceRegion ask MessageWrapper(randomArticle, GetStockPlan)).onComplete{
-        //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
-        case Success(result) => log.debug(s"GetStockPlan: $result")
-        case Failure(t) => log.debug(s"$t")
-      }
+      val newRandomArticle = randomArticle
+      callArticle(newRandomArticle)
+      //callArticle(newRandomArticle)
     }
 
     case sub@ Subscribe(_, to, _) => {
       log.debug(s"Subscribe received from ${sender()} Message: $sub")
       deviceRegion ! sub
     }
-    case mess@ MessageWrapper(_, _) => deviceRegion forward mess
+    case mess@ EntityWrapper(_, _) => deviceRegion forward mess
     case mess@ _ => log.debug(s"UNKNOWN MESSAGE: $mess")
+  }
+
+  private def callArticle(newRandomArticle: String) = {
+    val now = System.currentTimeMillis()
+    val message = random.nextInt(3) match {
+      case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+      case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+      case 2 => AddCustomerOrderFinal(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+      case 3 => AddPurchaseOrderFinal(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+    }
+    log.debug(s"New Message: Article: $newRandomArticle, Message: $message")
+    deviceRegion ! EntityWrapper(newRandomArticle, message)
+
+    import akka.pattern.ask
+    implicit val timeout = akka.util.Timeout(30 seconds)
+    (deviceRegion ask EntityWrapper(newRandomArticle, GetStockPlan)).onComplete {
+      //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
+      case Success(result) => log.debug(s"GetStockPlan: $newRandomArticle-$result, Duration: ${System.currentTimeMillis() - now}")
+      case Failure(t) => log.debug(s"$t")
+    }
   }
 }

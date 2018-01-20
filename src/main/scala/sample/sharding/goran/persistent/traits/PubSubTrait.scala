@@ -3,7 +3,7 @@ package sample.sharding.goran.persistent.traits
 import akka.actor.{ActorLogging, ActorRef, Props}
 import akka.persistence.PersistentActor
 import sample.sharding.goran.persistent.childutils.PubSubPersistentActor
-import sample.sharding.goran.persistent.childutils.PubSubPersistentActor.{EntityRef, Subscribe, Subscription, Unsubscribe}
+import sample.sharding.goran.persistent.childutils.PubSubPersistentActor._
 
 
 /**
@@ -11,6 +11,9 @@ import sample.sharding.goran.persistent.childutils.PubSubPersistentActor.{Entity
   * @version $Revision$ 30/12/2017
   */
 trait PubSubTrait extends LeanPersistAndHibernateTrait with ActorLogging{
+
+  def fromRouter: ActorRef
+  def fromName: String
 
   lazy val pubSubChild = context.child("PubSubChildActor").getOrElse(context.actorOf(Props[PubSubPersistentActor], "PubSubChildActor"))
 
@@ -22,8 +25,12 @@ trait PubSubTrait extends LeanPersistAndHibernateTrait with ActorLogging{
     case s: Unsubscribe => pubSubChild forward s
   }
 
-  def subscribe(fromRouter: ActorRef, fromName: String, toRouter: ActorRef, toName: String, subscription: Subscription): Unit = {
+  def subscribe(toRouter: ActorRef, toName: String, subscription: Subscription): Unit = {
     toRouter ! Subscribe(EntityRef(fromRouter, fromName), EntityRef(toRouter, toName), subscription) //TODO Add Sender() to message
     log.debug(s"TRYING TO SEND Subscribe to ${toRouter}")
+  }
+
+  def notifySubscribers(subscription: Subscription, message: Any) = {
+    pubSubChild ! NotifySubscribers(subscription, message)
   }
 }
