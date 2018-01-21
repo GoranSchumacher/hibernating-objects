@@ -51,11 +51,11 @@ class ExamplePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
 
   val receiveRecover: Receive = {
     case evt: Evt => {
-      println(s"Event received, persistenceId: ${persistenceId}, data: ${evt}")
+      log.debug(s"Event received, persistenceId: ${persistenceId}, data: ${evt}")
       updateState(evt)
     }
     case SnapshotOffer(_, snapshot: ExampleState) => {
-      println(s"Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
+      log.debug(s"Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
       state = snapshot
     }
   }
@@ -68,12 +68,12 @@ class ExamplePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
         val child = context.child(word1).getOrElse(context.actorOf(Props[ExampleChildPersistentActor], word1))
         //pubSubChild ! NotifySubscribers(IncrementSubscription, increment)
         notifySubscribers(IncrementSubscription, increment)
-        println(s"Number of children: ${context.children.toList.size}")
+        log.debug(s"Number of children: ${context.children.toList.size}")
         child ! word2
         updateState(event)
       }
 
-    case "print" => println(state)
+    case "print" => log.debug(state.toString)
 
     case Add(deviceId, num1, num2) => {
       sender ! num1+num2

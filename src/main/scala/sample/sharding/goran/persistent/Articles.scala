@@ -46,30 +46,34 @@ class Articles extends Actor with ActorLogging{
   val numberOfDevices = 50
 
   implicit val ec: ExecutionContext = context.dispatcher
-  context.system.scheduler.schedule(10.second, 10 milliseconds, self, Increment)
+  context.system.scheduler.schedule(10.second, 1 nanosecond, self, Increment)
   //context.system.scheduler.scheduleOnce(10.seconds, self, Increment)
 
-  val randomArticles = 1 to 1000000
-  def randomArticle = randomArticles(random.nextInt(randomArticles.size)).toString
+  def randomArticle = random.nextInt(1000000).toString
 
-  val randomYears = "17 18 19 20 21 22".split(" ").toList
-  def randomYear = randomYears(random.nextInt(randomYears.size))
+  def randomYear = random.nextInt(6)+17
 
-  val randomMonths = 1 to 12
-  def randomMonth = randomMonths(random.nextInt(randomMonths.size))
+  def randomMonth = random.nextInt(12)+1
 
-  val randomDays = 1 to 28
-  def randomDay = randomDays(random.nextInt(randomDays.size))
+  def randomDay = random.nextInt(28)+1
 
   def randomAmount = random.nextInt(19)+1
 
   def randomID = random.nextInt(1000000)
 
+  var count1000: Int=0
+  var count1000Start: Long=0
   def receive = {
     case Increment => {
-      val newRandomArticle = randomArticle
-      callArticle(newRandomArticle)
-      //callArticle(newRandomArticle)
+      if(count1000<1) {
+        count1000=1000
+        count1000Start=System.currentTimeMillis()
+      }
+      for (i <- 1 to 10){
+        val newRandomArticle = randomArticle
+        callArticle(newRandomArticle)
+        //callArticle(newRandomArticle)
+      }
     }
 
     case sub@ Subscribe(_, to, _) => {
@@ -83,10 +87,10 @@ class Articles extends Actor with ActorLogging{
   private def callArticle(newRandomArticle: String) = {
     val now = System.currentTimeMillis()
     val message = random.nextInt(3) match {
-      case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-      case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-      case 2 => AddCustomerOrderFinal(CustomerOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
-      case 3 => AddPurchaseOrderFinal(PurchaseOrder(randomID.toString, new JustDate(randomYear.toInt, randomMonth, randomDay), randomAmount))
+      case 0 => AddCustomerOrder(CustomerOrder(randomID.toString, new JustDate(randomYear, randomMonth, randomDay), randomAmount))
+      case 1 => AddPurchaseOrder(PurchaseOrder(randomID.toString, new JustDate(randomYear, randomMonth, randomDay), randomAmount))
+      case 2 => AddCustomerOrderFinal(CustomerOrder(randomID.toString, new JustDate(randomYear, randomMonth, randomDay), randomAmount))
+      case 3 => AddPurchaseOrderFinal(PurchaseOrder(randomID.toString, new JustDate(randomYear, randomMonth, randomDay), randomAmount))
     }
     log.debug(s"New Message: Article: $newRandomArticle, Message: $message")
     deviceRegion ! EntityWrapper(newRandomArticle, message)
@@ -95,7 +99,12 @@ class Articles extends Actor with ActorLogging{
     implicit val timeout = akka.util.Timeout(30 seconds)
     (deviceRegion ask EntityWrapper(newRandomArticle, GetStockPlan)).onComplete {
       //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
-      case Success(result) => log.debug(s"GetStockPlan: $newRandomArticle-$result, Duration: ${System.currentTimeMillis() - now}")
+      case Success(result) => {
+        log.debug(s"GetStockPlan: $newRandomArticle-$result, Duration: ${System.currentTimeMillis() - now}")
+        count1000 = count1000-1
+        if(count1000==0)
+          log.info(s"Count 1000 took: ${System.currentTimeMillis() - count1000Start}")
+      }
       case Failure(t) => log.debug(s"$t")
     }
   }

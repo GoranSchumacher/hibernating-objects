@@ -40,7 +40,7 @@ trait LeanPersistAndHibernateTrait extends PersistentActor with ActorLogging {
       log.debug(s"FAILED saved snapshot ${identity()}, cause: ${cause}")
     }
     case DeleteSnapshotsSuccess(criteria: SnapshotSelectionCriteria) => {
-      println(s"successfully deleted snapshot {}, deleting to seq: ${criteria.maxSequenceNr}")
+      log.debug(s"successfully deleted snapshot {}, deleting to seq: ${criteria.maxSequenceNr}")
       deleteMessages(criteria.maxSequenceNr)
     }
     case DeleteMessagesSuccess(toSequenceNr) => {
@@ -54,7 +54,7 @@ trait LeanPersistAndHibernateTrait extends PersistentActor with ActorLogging {
   }
 
   override def postStop(): Unit = {
-    log.debug(s"postStop called! id: ${persistenceId}. Path: ${self.path}")
+    log.info(s"postStop called! id: ${persistenceId}. Path: ${self.path}")
     saveSnapshot(state)
   }
 

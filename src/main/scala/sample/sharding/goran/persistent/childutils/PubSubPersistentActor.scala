@@ -40,7 +40,7 @@ class PubSubPersistentActor extends LeanPersistAndHibernateTrait with ActorLoggi
 
   def receiveRecoverLocal: Receive = {
     case SnapshotOffer(_, snapshot: State) => {
-      println(s"PubSubChildActor Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
+      log.debug(s"PubSubChildActor Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
       state = snapshot
     }
   }

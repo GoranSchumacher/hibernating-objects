@@ -180,7 +180,7 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
 
   val receiveRecoverLocal: Receive = {
     case SnapshotOffer(_, snapshot: OrderState) => {
-      println(s"Recovery Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
+      log.debug(s"Recovery Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
       state = snapshot
     }
   }
@@ -202,7 +202,7 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
         }
       } else {
         state = state.handleWrapper(wrapper)
-        println(s"Recovery message received, persistenceId: ${persistenceId}, data: ${wrapper}")
+        log.debug(s"Recovery message received, persistenceId: ${persistenceId}, data: ${wrapper}")
       }
     }
 

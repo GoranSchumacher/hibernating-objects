@@ -1,6 +1,6 @@
 package sample.sharding.goran.persistent
 
-import akka.actor.Props
+import akka.actor.{ActorLogging, Props}
 import akka.persistence._
 import sample.sharding.goran.persistent.ExamplePersistentActor.{Evt, ExampleState, Increment}
 import sample.sharding.goran.persistent.childutils.PubSubPersistentActor
@@ -16,7 +16,7 @@ import scala.concurrent.duration._
   * @version $Revision$ 11/11/2017
   */
 
-class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHibernateTrait with PubSubTrait {
+class ExampleChildPersistentActor extends LeanPersistAndHibernateTrait with PubSubTrait with ActorLogging{
 
   // Abstract members from PubSubTrait
   def fromRouter = null
@@ -39,11 +39,11 @@ class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHib
 
   val receiveRecover: Receive = {
     case evt: Evt => {
-      println(s"CHILD Event received, persistenceId: ${persistenceId}, data: ${evt}")
+      log.debug(s"CHILD Event received, persistenceId: ${persistenceId}, data: ${evt}")
       updateState(evt)
     }
     case SnapshotOffer(_, snapshot: ExampleState) => {
-      println(s"CHILD Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
+      log.debug(s"CHILD Snapshot received, persistenceId: ${persistenceId}, data: ${snapshot}")
       state = snapshot
     }
   }
@@ -56,7 +56,7 @@ class ExampleChildPersistentActor extends PersistentActor with LeanPersistAndHib
         updateState(event)
       }
 
-    case "print" => println(state)
+    case "print" => log.debug(state.toString)
   }
 
 //  ///////// PubSub ////////////
