@@ -18,7 +18,8 @@ trait PubSubTrait extends LeanPersistAndHibernateTrait with ActorLogging{
   lazy val pubSubChild = context.child("PubSubChildActor").getOrElse(context.actorOf(Props[PubSubPersistentActor], "PubSubChildActor"))
 
 
-  override def receiveCommand = super.receiveCommand orElse pubSubReceiveCommand
+  override def receiveCommand = pubSubReceiveCommand
+  //override def receiveCommand = super.receiveCommand orElse pubSubReceiveCommand
 
   def pubSubReceiveCommand: Receive = {
     case s: Subscribe => pubSubChild forward s

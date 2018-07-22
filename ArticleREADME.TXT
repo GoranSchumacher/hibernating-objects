@@ -39,3 +39,8 @@ List((Balance,18-01-08,85,85),
 (PurchaseOrder,2018-02-01,15,100),
 (PurchaseOrder,2018-02-20,25,125),
 (CustomerOrder,2018-02-25,-8,117))
+
+Start an extra Instance
+=======================
+cd /Users/GSConsulting/Dev./Repos/hibernating-objects
+sbt "runMain sample.sharding.ArticleApp 2555"

@@ -6,6 +6,7 @@ import sample.sharding.goran.persistent.ArticlePersistentActor._
 import sample.sharding.goran.persistent.ExamplePersistentActor.{Add, Increment}
 import sample.sharding.goran.persistent.childutils.PubSubPersistentActor.Subscribe
 
+import scala.collection.BitSet
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Random, Success, Try}
 import scala.concurrent.duration._
@@ -18,6 +19,27 @@ object Articles {
   case object UpdateExample
 
   def articlePersistentActorProps(myRouter: ActorRef) = Props(classOf[ArticlePersistentActor], myRouter)
+
+  case class ActorsState(actorBitSet:BitSet = BitSet.empty, activeActors: Int=0) {
+    def addActor(actorStarted: ActorStarted) = {
+      if(!actorBitSet.contains(actorStarted.nameAsInt))
+        this.copy(actorBitSet =
+        actorBitSet + actorStarted.nameAsInt,
+          activeActors = activeActors +1
+        )
+      else
+        this
+    }
+    def removeActor(actorHibernating: ActorHibernating) = {
+      if(actorBitSet.contains(actorHibernating.nameAsInt))
+        this.copy(actorBitSet =
+        actorBitSet - actorHibernating.nameAsInt,
+          activeActors = activeActors -1
+        )
+      else
+        this
+    }
+  }
 
 }
 class Articles extends Actor with ActorLogging{
@@ -46,8 +68,10 @@ class Articles extends Actor with ActorLogging{
   val numberOfDevices = 50
 
   implicit val ec: ExecutionContext = context.dispatcher
-  context.system.scheduler.schedule(10.second, 1 nanosecond, self, Increment)
+  context.system.scheduler.schedule(10.second, 100 milliseconds, self, Increment)
   //context.system.scheduler.scheduleOnce(10.seconds, self, Increment)
+
+  context.system.scheduler.schedule(1 minute, 1 minute, self, "ActorStatus")
 
   def randomArticle = random.nextInt(1000000).toString
 
@@ -70,8 +94,7 @@ class Articles extends Actor with ActorLogging{
         count1000Start=System.currentTimeMillis()
       }
       for (i <- 1 to 10){
-        val newRandomArticle = randomArticle
-        callArticle(newRandomArticle)
+        callArticle(randomArticle)
         //callArticle(newRandomArticle)
       }
     }
@@ -81,8 +104,18 @@ class Articles extends Actor with ActorLogging{
       deviceRegion ! sub
     }
     case mess@ EntityWrapper(_, _) => deviceRegion forward mess
+
+    case started: ActorStarted =>
+      actorStatusState = actorStatusState.addActor(started)
+    case hibernating: ActorHibernating =>
+      actorStatusState = actorStatusState.removeActor(hibernating)
+    case "ActorStatus" => log.info(f"Actor State, Active actors ${actorStatusState.activeActors}%,.0f")
+
+
     case mess@ _ => log.debug(s"UNKNOWN MESSAGE: $mess")
   }
+
+  var actorStatusState: Articles.ActorsState = Articles.ActorsState()
 
   private def callArticle(newRandomArticle: String) = {
     val now = System.currentTimeMillis()
@@ -100,7 +133,7 @@ class Articles extends Actor with ActorLogging{
     (deviceRegion ask EntityWrapper(newRandomArticle, GetStockPlan)).onComplete {
       //case t: Try[Any] => log.debug(s"GetStockPlan: $t")
       case Success(result) => {
-        log.debug(s"GetStockPlan: $newRandomArticle-$result, Duration: ${System.currentTimeMillis() - now}")
+        log.info(s"GetStockPlan: $newRandomArticle-$result, Duration: ${System.currentTimeMillis() - now}")
         count1000 = count1000-1
         if(count1000==0)
           log.info(s"Count 1000 took: ${System.currentTimeMillis() - count1000Start}")

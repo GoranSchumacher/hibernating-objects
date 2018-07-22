@@ -72,30 +72,30 @@ object ArticlePersistentActor {
     }
   }
 
-  case class OrderState(inStock: Int, customerOrders: List[CustomerOrder], purchaseOrders: List[PurchaseOrder]) {
+  case class OrderState(inStock: Int=0, customerOrders: List[CustomerOrder]=List.empty[CustomerOrder], purchaseOrders: List[PurchaseOrder]=List.empty[PurchaseOrder]) {
     def stockPerDate: List[(String, JustDate, Int, Int)] = {
       val l = SortableList(customerOrders ::: purchaseOrders).sort
       l.foldLeft(List(("Balance", JustDate.now, inStock, inStock)))((list, el) =>
         (el.getClass.getSimpleName, el.deliveryDate, el.amountChange, list.head._4 + el.amountChange) :: list).reverse
     }
 
-    def addOrderToCustomerOrders(o: CustomerOrder) = {
+    private def addOrderToCustomerOrders(o: CustomerOrder) = {
       this.copy(customerOrders = SortableList(customerOrders).add(o).asInstanceOf[List[CustomerOrder]])
     }
 
-    def addOrderToPurchaseOrders(o: PurchaseOrder) = {
+    private def addOrderToPurchaseOrders(o: PurchaseOrder) = {
       this.copy(purchaseOrders = SortableList(purchaseOrders).add(o).asInstanceOf[List[PurchaseOrder]])
     }
 
-    def removeIdFromCustomerOrders(id: String) = {
+    private def removeIdFromCustomerOrders(id: String) = {
       this.copy(customerOrders = SortableList(customerOrders).removeId(id).asInstanceOf[List[CustomerOrder]])
     }
 
-    def removeIdFromPurchaseOrders(id: String) = {
+    private def removeIdFromPurchaseOrders(id: String) = {
       this.copy(purchaseOrders = SortableList(purchaseOrders).removeId(id).asInstanceOf[List[PurchaseOrder]])
     }
 
-    def addToStock(amount: Int) = {
+    private def addToStock(amount: Int) = {
       this.copy(inStock = inStock + amount)
     }
 
@@ -156,6 +156,10 @@ object ArticlePersistentActor {
 
   case object GetStockPlan
 
+  // Actor Info
+  case class ActorStarted(nameAsInt: Int)
+  case class ActorHibernating(nameAsInt: Int)
+
   //Subscriptions
   case object IncrementSubscription extends Subscription
 
@@ -169,7 +173,7 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
 
   // Abstract members from LeanPersistAndHibernateTrait
   override val hibernatingTimeout = 1 minute // 1 minute == Default value
-  var state = OrderState(0, List.empty, List.empty)
+  var state = OrderState()
   override def persistenceId = context.self.path.name // == Default value
   override def purgeLogs: Boolean = true // When making snapshot it will purge logs from older entries preserving only the most recent snapshot and logs
 
@@ -185,7 +189,8 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
     }
   }
 
-  override def receiveCommand = super.receiveCommand orElse articleReceiveCommand
+  override def receiveCommand = super[PubSubTrait].receiveCommand orElse super[LeanPersistAndHibernateTrait].receiveCommand orElse articleReceiveCommand
+  //override def receiveCommand = super.receiveCommand orElse articleReceiveCommand
 
   // Be aware that recover operations also is performed here
   // If your method has side-effects => Make shure these are not performed during recover using;
@@ -209,6 +214,14 @@ class ArticlePersistentActor(myRouter: ActorRef) extends PersistentActor with Le
     case SubscriptionEventOccurred(_, subscription, mess) => log.debug(s"SubscriptionEventOccurred: $subscription $mess")
 
     case mess@ _ => log.debug(s"UNKNOWN MESSAGE: $mess")
+  }
 
+  override def aroundPreStart() = {
+    myRouter ! ActorStarted(context.self.path.name.toInt)
+    super.aroundPreStart()
+  }
+  override def aroundPostStop() = {
+    myRouter ! ActorHibernating(context.self.path.name.toInt)
+    super.aroundPostStop()
   }
 }
